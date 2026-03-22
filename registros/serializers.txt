@@ -1,0 +1,252 @@
+from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import (
+    Deposito, Usuario, Propietario, Vehiculo, 
+    Ingreso, EstatusLegal, DetallesAuto, 
+    ObjetoPersonal, SolicitudEdicion, Bitacora,
+    RegistroDano, Inspeccion 
+)
+
+import json
+from django.utils import timezone
+
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Añadir datos extra al payload del token (opcional, para seguridad)
+        token['rol'] = user.rol
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # Añadir datos extra a la RESPUESTA JSON (lo que lee tu Vue)
+        data['rol'] = self.user.rol
+        data['id_deposito'] = self.user.id_deposito.id if self.user.id_deposito else None
+        data['username'] = self.user.username
+        data['nombre_user'] = self.user.nombre_user
+        data['aPaterno_user'] = self.user.aPaterno_user
+        data['email'] = self.user.email
+        return data
+
+
+# backend/registros/serializers.py
+
+class DepositoSerializer(serializers.ModelSerializer):
+    total_unidades = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Deposito
+        # Asegúrate de agregar 'concesionario_responsable' y 'estatus_deposito'
+        fields = [
+            'id', 
+            'nombre', 
+            'ubicacion', 
+            'concesionario_responsable', 
+            'estatus_deposito', 
+            'total_unidades'
+        ]
+
+    def get_total_unidades(self, obj):
+        return Ingreso.objects.filter(deposito=obj, vehiculo__estatus_actual='DENTRO').count()
+    
+    
+# serializers.py
+class UsuarioSerializer(serializers.ModelSerializer):
+    # Esto traerá el objeto completo del depósito solo para lectura (la tabla)
+    id_deposito_detalles = DepositoSerializer(source='id_deposito', read_only=True)
+
+    class Meta:
+        model = Usuario
+        fields = [
+            'id', 'username', 'password', 'nombre_user', 'aPaterno_user', 
+            'aMaterno_user', 'email', 'rol', 'id_deposito', 'id_deposito_detalles', 'estatus_user'
+        ]
+        extra_kwargs = {'password': {'write_only': True}} # La contraseña no se manda al Front
+
+    def create(self, validated_data):
+        # Extraemos el depósito si viene, si no, None
+        id_deposito = validated_data.pop('id_deposito', None)
+        
+        # Creamos el usuario con el resto de los datos (username, password, etc)
+        user = Usuario.objects.create_user(**validated_data)
+        
+        # Asignamos el depósito manualmente y guardamos
+        if id_deposito:
+            user.id_deposito = id_deposito
+            user.save()
+            
+        return user
+    
+class PropietarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Propietario
+        fields = '__all__'
+
+class VehiculoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Vehiculo
+        # BUSCA AQUÍ Y QUITA 'tipo_servicio'
+        fields = ['id', 'num_serie', 'placas', 'marca', 'submarca', 
+                  'modelo', 'anio', 'color_original', 'color_actual', 'tipo_vehiculo', 'propietario', 'estatus_actual', 'repuve'] 
+        # O si tenías '__all__', ya debería funcionar solo si migraste bien.
+
+
+class RegistroDanoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RegistroDano
+        fields = '__all__'
+
+class ObjetoPersonalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ObjetoPersonal
+        fields = '__all__'
+
+class DetallesAutoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DetallesAuto
+        fields = '__all__'
+
+class EstatusLegalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EstatusLegal
+        fields = '__all__'
+
+class InspeccionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Inspeccion
+        fields = '__all__'
+
+
+
+class BitacoraSerializer(serializers.ModelSerializer):
+    # Traemos el nombre del usuario para que Vue no vea solo el ID
+    user_nombre = serializers.CharField(source='usuario.username', read_only=True)
+    
+    class Meta:
+        model = Bitacora
+        fields = ['id', 'tipo_evento', 'descripcion', 'user_nombre', 'fecha_registro']
+
+
+
+
+class SolicitudEdicionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SolicitudEdicion
+        fields = '__all__'
+
+
+
+        
+      
+
+import json
+from django.utils import timezone
+from rest_framework import serializers
+from .models import Ingreso, DetallesAuto, ObjetoPersonal, RegistroDano, Vehiculo
+
+
+class IngresoSerializer(serializers.ModelSerializer):
+    # 1. Campos para que el FRONTEND vea los datos bonitos (Lectura)
+    vehiculo_detalle = VehiculoSerializer(source='vehiculo', read_only=True)
+    nombre_deposito = serializers.CharField(source='deposito.nombre', read_only=True)
+    estatus_legal_detalle = EstatusLegalSerializer(source='estatus_legales', many=True, read_only=True)
+    # 2. Campo para que el BACKEND reciba el vehículo (o lo ignore si es nuevo)
+    vehiculo = serializers.PrimaryKeyRelatedField(
+        queryset=Vehiculo.objects.all(), 
+        required=False, 
+        allow_null=True
+    )
+    detalles_auto = DetallesAutoSerializer(source='historial_detalles', read_only=True)
+    
+    # 📦 Objetos (Usamos el related_name='objetos_encontrados')
+    objetos_personales = ObjetoPersonalSerializer(source='objetos_encontrados', many=True, read_only=True)
+    
+    # 💥 Daños (Usamos el related_name='danos')
+    registros_danos = RegistroDanoSerializer(source='danos', many=True, read_only=True)
+    
+    # 3. Campos automáticos (Solo lectura, el servidor los pone)
+    deposito = serializers.PrimaryKeyRelatedField(read_only=True)
+    fecha_ingreso = serializers.DateTimeField(read_only=True)
+    
+    
+    class Meta:
+        model = Ingreso
+        fields = '__all__'
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        user = request.user
+
+        # 1. Lógica de Vehículo
+        vehiculo_id = request.data.get('vehiculo')
+        marca = request.data.get('marca')
+
+        if vehiculo_id and vehiculo_id not in ['null', '', 'undefined']:
+            vehiculo_obj = Vehiculo.objects.get(id=vehiculo_id)
+        else:
+            # CREACIÓN DE VEHÍCULO NUEVO
+            vehiculo_obj = Vehiculo.objects.create(
+                marca=marca,
+                submarca=request.data.get('submarca', ''),
+                modelo=request.data.get('modelo'),
+                anio=request.data.get('anio', 2026),
+                placas=request.data.get('placas', '').upper(),
+                num_serie=request.data.get('num_serie', '').upper(),
+                color_actual=request.data.get('color_actual'),
+                tipo_vehiculo=request.data.get('tipo_vehiculo', 'SEDAN'),
+                repuve=request.data.get('repuve', '')
+            )
+
+        # 2. Datos de Ingreso
+        validated_data['vehiculo'] = vehiculo_obj
+        validated_data['fecha_ingreso'] = timezone.now()
+        if hasattr(user, 'id_deposito') and user.id_deposito:
+            validated_data['deposito'] = user.id_deposito
+
+        # 3. Procesar JSONs (Mecánica, Objetos, Daños)
+        mecanica_raw = request.data.get('detalles_auto', '{}')
+        objetos_raw = request.data.get('objetos_data', '[]')
+        danos_raw = request.data.get('danos_data', '[]')
+
+        mecanica_data = json.loads(mecanica_raw) if isinstance(mecanica_raw, str) else mecanica_raw
+        objetos_data = json.loads(objetos_raw) if isinstance(objetos_raw, str) else objetos_raw
+        danos_data = json.loads(danos_raw) if isinstance(danos_raw, str) else danos_raw
+
+        # 4. Crear el Ingreso
+        ingreso = Ingreso.objects.create(**validated_data)
+
+        # 5. Detalles Mecánicos
+        DetallesAuto.objects.create(
+            ingreso=ingreso,
+            presencia_bateria=mecanica_data.get('presencia_bateria', True),
+            estatus_carroceria=mecanica_data.get('estatus_carroceria', 'BUENO'),
+            cilindros=mecanica_data.get('cilindros'),
+            cantidad_asientos=mecanica_data.get('cantidad_asientos'),
+            tipo_combustible=mecanica_data.get('tipo_combustible'),
+            # Agrega aquí los campos de fotos de la mecánica si los necesitas:
+            evidencia_foto_frontal=request.FILES.get('evidencia_foto_frontal')
+        )
+
+        # 6. Objetos Personales (Nombres corregidos según tu vista)
+        for i, obj in enumerate(objetos_data):
+            foto = request.FILES.get(f'foto_objeto_{i}')
+            ObjetoPersonal.objects.create(
+                ingreso=ingreso, 
+                foto_objeto=foto, # <--- Nombre según tu modelo
+                descripcion=obj.get('descripcion', ''),
+                cantidad=obj.get('cantidad', 1)
+            )
+
+        # 7. Registro de Daños
+        for i, dano in enumerate(danos_data):
+            foto = request.FILES.get(f'foto_dano_{i}')
+            RegistroDano.objects.create(
+                ingreso=ingreso, 
+                foto_evidencia=foto, # <--- Nombre según tu modelo
+                parte_vehiculo=dano.get('parte_vehiculo', ''),
+                descripcion=dano.get('descripcion', '')
+            )
+
+        return ingreso
