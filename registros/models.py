@@ -377,7 +377,7 @@ class Liberacion(models.Model):
     
 class FotoEvidencia(models.Model):
     ingreso = models.ForeignKey(Ingreso, on_delete=models.CASCADE, related_name='fotos_evidencia')
-    nombre = models.CharField(max_length=150, help_text="Ej: Frontal, Lateral Izquierdo, Llanta extra...")
+    nombre = models.CharField(max_length=250, help_text="Ej: Frontal, Lateral Izquierdo, Llanta extra...")
     foto = models.ImageField(upload_to=ruta_fotos_evidencia)
     fecha_subida = models.DateTimeField(auto_now_add=True)  
     justificacion = models.TextField(blank=True, null=True)
