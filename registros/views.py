@@ -21,7 +21,7 @@ from .models import (
 )
 from .serializers import (
     UsuarioSerializer, DepositoSerializer, VehiculoSerializer, 
-    IngresoSerializer, PropietarioSerializer, DetallesAutoSerializer, 
+    IngresoSerializer, PropietarioSerializer, DetallesAutoSerializer,IngresoListSerializer,
     ObjetoPersonalSerializer, RegistroDanoSerializer, InspeccionSerializer, 
     SolicitudEdicionSerializer, BitacoraSerializer, FotoEvidenciaSerializer
 )
@@ -173,26 +173,39 @@ class VehiculoViewSet(viewsets.ModelViewSet):
     filterset_fields = ['estatus_actual', 'tipo_servicio']
 
 class IngresoViewSet(viewsets.ModelViewSet):
-    """
-    Esta vista maneja todo el registro de entrada usando el IngresoSerializer.
-    Maneja la creación de Vehículo, Detalles, Objetos y Daños automáticamente.
-    """
-    serializer_class = IngresoSerializer
-    #queryset = Ingreso.objects.all().select_related('vehiculo', 'deposito')
-    queryset = Ingreso.objects.all().select_related('vehiculo', 'deposito').order_by('-id')
-    parser_classes = [MultiPartParser, FormParser] # IMPORTANTE para recibir archivos
+    # Dejamos el serializer completo para creación/actualización
+    serializer_class = IngresoSerializer 
+    
+    # Optimizamos la consulta base con select_related
+    queryset = Ingreso.objects.all().select_related(
+        'vehiculo', 
+        'deposito'
+    ).order_by('-id')
+    
+    parser_classes = [MultiPartParser, FormParser]
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        """
+        Si la acción es 'list' (la tabla de inventario), usamos un 
+        serializador que no cargue datos pesados de multimedia.
+        """
+        if self.action == 'list':
+            return IngresoListSerializer # <-- Debes crearlo en serializers.py
+        return self.serializer_class
 
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated:
             return Ingreso.objects.none()
 
-        if user.rol == 'SUPER':
-            return self.queryset
+        # Evitamos re-evaluar la query innecesariamente
+        qs = self.queryset
         
-        # Filtramos por el depósito asignado al usuario (Admin/Operador)
-        return self.queryset.filter(deposito=user.id_deposito)
+        if user.rol != 'SUPER':
+            qs = qs.filter(deposito=user.id_deposito)
+        
+        return qs
 
 # --- VISTAS DE DETALLES Y EVIDENCIA ---
 

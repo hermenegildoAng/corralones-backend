@@ -12,6 +12,30 @@ from .models import (
     RegistroDano, Inspeccion , FotoEvidencia
 )
 from .models import CodigoPostal
+
+class IngresoListSerializer(serializers.ModelSerializer):
+    # Traemos solo lo esencial del vehículo para la tabla
+    vehiculo_detalle = serializers.SerializerMethodField()
+    nombre_deposito = serializers.CharField(source='deposito.nombre', read_only=True)
+
+    class Meta:
+        model = Ingreso
+        fields = [
+            'id', 'folio', 'fecha_ingreso', 'nombre_deposito', 
+            'vehiculo_detalle', 'tipo_registro', 'deposito'
+        ]
+
+    def get_vehiculo_detalle(self, obj):
+        if obj.vehiculo:
+            return {
+                'marca': obj.vehiculo.marca,
+                'modelo': obj.vehiculo.modelo,
+                'anio': obj.vehiculo.anio,
+                'placas': obj.vehiculo.placas,
+                'estatus_actual': obj.vehiculo.estatus_actual
+            }
+        return None
+
 # serializers.py
 class CodigoPostalSerializer(serializers.ModelSerializer):
     class Meta:
