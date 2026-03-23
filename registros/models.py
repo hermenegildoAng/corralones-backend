@@ -297,7 +297,7 @@ class SolicitudEdicion(models.Model):
     estatus = models.CharField(max_length=15, choices=ESTATUS_CHOICES, default='PENDIENTE')
     
     # NUEvos
-    evidencia_solicitud = models.ImageField(upload_to=ruta_solicitudes_temporales, null=True, blank=True)
+    evidencia_solicitud = models.ImageField(upload_to=ruta_solicitudes_temporales, max_length=550, null=True, blank=True)
     motivo_rechazo = models.TextField(null=True, blank=True)
     
     fecha_solicitud = models.DateTimeField(auto_now_add=True) 
@@ -378,7 +378,7 @@ class Liberacion(models.Model):
 class FotoEvidencia(models.Model):
     ingreso = models.ForeignKey(Ingreso, on_delete=models.CASCADE, related_name='fotos_evidencia')
     nombre = models.CharField(max_length=250, help_text="Ej: Frontal, Lateral Izquierdo, Llanta extra...")
-    foto = models.ImageField(upload_to=ruta_fotos_evidencia)
+    foto = models.ImageField(upload_to=ruta_fotos_evidencia, max_length=500)
     fecha_subida = models.DateTimeField(auto_now_add=True)  
     justificacion = models.TextField(blank=True, null=True)
     es_solicitud = models.BooleanField(default=False)
