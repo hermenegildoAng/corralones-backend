@@ -10,8 +10,8 @@ from rest_framework.exceptions import ValidationError
 # --- FUNCIONES DE RUTA PARA ARCHIVOS ---
 class CodigoPostal(models.Model):
     cp = models.CharField(max_length=5, db_index=True)  # 🔥 índice
-    estado = models.CharField(max_length=100)
-    municipio = models.CharField(max_length=100)
+    estado = models.CharField(max_length=210)
+    municipio = models.CharField(max_length=210)
     colonias = models.CharField(max_length=150)
     def __str__(self):
         return f"{self.cp} - {self.municipio}, {self.estado}"

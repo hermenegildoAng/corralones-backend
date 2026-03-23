@@ -2,6 +2,8 @@ import json
 from django.utils import timezone
 from django.core.mail import send_mail
 from rest_framework import serializers
+from django.conf import settings
+import threading
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import (
     Deposito, Usuario, Propietario, Vehiculo, 
@@ -94,32 +96,32 @@ class UsuarioSerializer(serializers.ModelSerializer):
         }
     def create(self, validated_data):
         password = validated_data.get('password')
-
         user = Usuario(**validated_data)
-
         if password:
             user.set_password(password)
-
         user.save()
 
-        # enviar correo
+        # Enviar correo en background sin bloquear
         email = validated_data.get('email')
         username = validated_data.get('username')
 
         if email:
-            try:
-                send_mail(
-                'Credenciales de acceso',
-                f'Usuario: {username}\nContraseña: {password}',
-                'tucorreo@gmail.com',
-                [email],
-                fail_silently=True
-            )
-            except Exception as e:
-                print(e)
+            def enviar():
+                try:
+                    send_mail(
+                        'Credenciales de acceso — MSYT',
+                        f'Bienvenido al sistema.\n\nUsuario: {username}\nContraseña: {password}',
+                        settings.DEFAULT_FROM_EMAIL,
+                        [email],
+                        fail_silently=True
+                    )
+                except Exception as e:
+                    print(f"Error enviando correo: {e}")
+
+            threading.Thread(target=enviar, daemon=True).start()
 
         return user
-     
+        
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
