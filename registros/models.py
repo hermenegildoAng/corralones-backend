@@ -291,7 +291,7 @@ class SolicitudEdicion(models.Model):
     
     justificacion = models.TextField()
     registro_id = models.IntegerField() 
-    campo_afectado = models.CharField(max_length=100)
+    campo_afectado = models.CharField(max_length=300)
     valor_viejo = models.TextField()
     valor_nuevo = models.TextField()
     estatus = models.CharField(max_length=15, choices=ESTATUS_CHOICES, default='PENDIENTE')
