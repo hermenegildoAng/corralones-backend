@@ -266,11 +266,12 @@ class SolicitudEdicionSerializer(serializers.ModelSerializer):
 
 
 class BitacoraSerializer(serializers.ModelSerializer):
-    user_nombre = serializers.CharField(source='usuario.username', read_only=True)
+    usuario = serializers.CharField(source='usuario.username', read_only=True)
+    rol = serializers.CharField(source='usuario.rol', read_only=True)
 
     class Meta:
         model = Bitacora
-        fields = ['id', 'tipo_evento', 'descripcion', 'user_nombre', 'fecha_evento']
+        fields = ['id', 'tipo_evento', 'descripcion', 'usuario', 'rol', 'fecha_evento']
 
 
 # --- INGRESO (FUSIONADO PRO) ---
