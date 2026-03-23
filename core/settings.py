@@ -84,6 +84,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DATETIME_FORMAT': "%Y-%m-%d %H:%M:%S",
+    'PAGE_SIZE': 5,
 }
 
 # ─── JWT ──────────────────────────────────────────────────────
