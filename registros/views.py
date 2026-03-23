@@ -468,8 +468,10 @@ def Crear_solicitud_cambio(request):
         return Response({"mensaje": "¡Movimiento registrado con éxito!"}, status=status.HTTP_200_OK)
 
     except Exception as e:
-        print("Error en solicitud:", str(e))
-        return Response({"error": "Hubo un problema al procesar la solicitud"}, status=status.HTTP_400_BAD_REQUEST)
+        import traceback
+        traceback.print_exc()
+        print("Error detallado:", str(e))  # ← agregar
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)  # ← cambiar para ver el error real
     
     
     
