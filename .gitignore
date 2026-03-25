@@ -53,4 +53,4 @@ htmlcov/
 # NODE (por si hay scripts)
 # =========================
 node_modules/
-dist/
+dist/.env
