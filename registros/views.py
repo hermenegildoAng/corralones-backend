@@ -108,7 +108,7 @@ class PasswordResetRequestView(APIView):
 
         # Construye el link al frontend
         # Quita la diagonal del final
-        reset_url = f'http://localhost:5173/reset-password/{uid}/{token}'
+        reset_url = f'{settings.FRONTEND_URL}/reset-password/{uid}/{token}'
         # ✅ Sin / al final
 
         # Envía el correo
@@ -117,6 +117,7 @@ class PasswordResetRequestView(APIView):
             message = f'Hola {user.nombre_user},\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expira en 24 horas.\n\nSi no solicitaste esto, ignora este correo.',
             from_email = settings.DEFAULT_FROM_EMAIL,
             recipient_list = [email],
+            fail_silently= False
         )
 
         return Response({'message': 'Si el correo existe, recibirás un enlace.'}, status=200)

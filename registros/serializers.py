@@ -16,6 +16,7 @@ from .models import CodigoPostal
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 from decouple import config as decouple_config
+
 class IngresoListSerializer(serializers.ModelSerializer):
     # Traemos solo lo esencial del vehículo para la tabla
     vehiculo_detalle = serializers.SerializerMethodField()
