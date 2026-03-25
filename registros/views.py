@@ -41,8 +41,9 @@ from rest_framework import status
 
 
 from django.shortcuts import get_object_or_404
-from rest_framework.decorators import api_view
-
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+from decouple import config as decouple_config
 
 
 
@@ -90,15 +91,22 @@ class PasswordResetRequestView(APIView):
 
         def enviar():
             try:
-                send_mail(
-                    subject='Recuperación de contraseña — MSYT',
-                    message=f'Hola {user.nombre_user},\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expira en 24 horas.\n\nSi no solicitaste esto, ignora este correo.',
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[email],
-                    fail_silently=True
+                configuration = sib_api_v3_sdk.Configuration()
+                configuration.api_key['api-key'] = decouple_config('BREVO_API_KEY')
+                
+                api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+                    sib_api_v3_sdk.ApiClient(configuration)
                 )
+                
+                send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+                    to=[{"email": email}],
+                    sender={"email": "mcarmonapalestina@gmail.com", "name": "SMYT Corralones"},
+                    subject='Recuperación de contraseña — MSYT',
+                    text_content=f'Hola {user.nombre_user},\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expira en 24 horas.\n\nSi no solicitaste esto, ignora este correo.'
+                )
+                api_instance.send_transac_email(send_smtp_email)
             except Exception as e:
-                print(f"Error enviando correo reset: {e}")
+                print(f"Error enviando correo: {e}")
 
         threading.Thread(target=enviar, daemon=True).start()
 

@@ -13,7 +13,9 @@ from .models import (
     RegistroDano, Inspeccion , FotoEvidencia
 )
 from .models import CodigoPostal
-
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+from decouple import config as decouple_config
 class IngresoListSerializer(serializers.ModelSerializer):
     # Traemos solo lo esencial del vehículo para la tabla
     vehiculo_detalle = serializers.SerializerMethodField()
@@ -126,20 +128,24 @@ class UsuarioSerializer(serializers.ModelSerializer):
             user.set_password(password)
         user.save()
 
-        # Enviar correo en background sin bloquear
         email = validated_data.get('email')
         username = validated_data.get('username')
 
         if email:
             def enviar():
                 try:
-                    send_mail(
-                        'Credenciales de acceso — MSYT',
-                        f'Bienvenido al sistema.\n\nUsuario: {username}\nContraseña: {password}',
-                        settings.DEFAULT_FROM_EMAIL,
-                        [email],
-                        fail_silently=True
+                    configuration = sib_api_v3_sdk.Configuration()
+                    configuration.api_key['api-key'] = decouple_config('BREVO_API_KEY')
+                    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+                        sib_api_v3_sdk.ApiClient(configuration)
                     )
+                    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+                        to=[{"email": email}],
+                        sender={"email": "mcarmonapalestina@gmail.com", "name": "SMYT Corralones"},
+                        subject='Credenciales de acceso — MSYT',
+                        text_content=f'Bienvenido al sistema.\n\nUsuario: {username}\nContraseña: {password}'
+                    )
+                    api_instance.send_transac_email(send_smtp_email)
                 except Exception as e:
                     print(f"Error enviando correo: {e}")
 
