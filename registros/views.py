@@ -93,7 +93,9 @@ class PasswordResetRequestView(APIView):
             try:
                 configuration = sib_api_v3_sdk.Configuration()
                 configuration.api_key['api-key'] = decouple_config('BREVO_API_KEY')
-                
+                print(f"Intentando enviar correo a: {email}")
+                print(f"API KEY: {decouple_config('BREVO_API_KEY')[:20]}...")  # solo primeros 20 chars
+                configuration = sib_api_v3_sdk.Configuration()
                 api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
                     sib_api_v3_sdk.ApiClient(configuration)
                 )
