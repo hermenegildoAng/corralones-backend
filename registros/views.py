@@ -96,6 +96,35 @@ class PasswordResetRequestView(APIView):
     def post(self, request):
         email = request.data.get('email', '').strip()
 
+        # Siempre responde 200 aunque el email no exista (seguridad)
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'message': 'Si el correo existe, recibirás un enlace.'}, status=200)
+
+        # Genera token y uid
+        uid   = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        # Construye el link al frontend
+        # Quita la diagonal del final
+        reset_url = f'http://localhost:5173/reset-password/{uid}/{token}'
+        # ✅ Sin / al final
+
+        # Envía el correo
+        send_mail(
+            subject = 'Recuperación de contraseña — MSYT',
+            message = f'Hola {user.nombre_user},\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expira en 24 horas.\n\nSi no solicitaste esto, ignora este correo.',
+            from_email = settings.DEFAULT_FROM_EMAIL,
+            recipient_list = [email],
+        )
+
+        return Response({'message': 'Si el correo existe, recibirás un enlace.'}, status=200)
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email', '').strip()
+
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
@@ -130,6 +159,29 @@ class PasswordResetRequestView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):  # ← debe estar indentado dentro de la clase
+        uid = request.data.get('uid')
+        token = request.data.get('token')
+        password = request.data.get('password')
+
+        if not all([uid, token, password]):
+            return Response({'error': 'Faltan datos obligatorios.'}, status=400)
+
+        try:
+            pk = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(pk=pk)
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError) as e:
+            return Response({'error': f'UID inválido: {e}'}, status=400)
+
+        if not default_token_generator.check_token(user, token):
+            return Response({'error': 'El enlace ha expirado o ya fue utilizado.'}, status=400)
+
+        user.set_password(password)
+        user.save()
+        return Response({'message': '¡Contraseña actualizada correctamente!'}, status=200)
     permission_classes = [AllowAny]
 
     def post(self, request):
