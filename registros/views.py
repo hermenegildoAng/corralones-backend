@@ -10,7 +10,7 @@ from django.apps import apps
 
 from django.utils.timezone import now
 from .models import CodigoPostal
-
+import threading
 
 from django.utils.timezone import now
 import json
@@ -41,8 +41,9 @@ from rest_framework import status
 
 
 from django.shortcuts import get_object_or_404
-from rest_framework.decorators import api_view
-
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+from decouple import config as decouple_config
 
 
 
@@ -95,29 +96,35 @@ class PasswordResetRequestView(APIView):
     def post(self, request):
         email = request.data.get('email', '').strip()
 
-        # Siempre responde 200 aunque el email no exista (seguridad)
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response({'message': 'Si el correo existe, recibirás un enlace.'}, status=200)
 
-        # Genera token y uid
-        uid   = urlsafe_base64_encode(force_bytes(user.pk))
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
-
-        # Construye el link al frontend
         reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}"
-        print("UID:", uid)
-        print("TOKEN:", token)
-        
 
-        # Envía el correo
-        send_mail(
-            subject = 'Recuperación de contraseña — MSYT',
-            message = f'Hola {user.nombre_user},\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expira en 24 horas.\n\nSi no solicitaste esto, ignora este correo.',
-            from_email = settings.DEFAULT_FROM_EMAIL,
-            recipient_list = [email],
-        )
+        def enviar():
+            try:
+                import requests as req
+                api_key = decouple_config('BREVO_API_KEY')
+                req.post(
+                    'https://api.brevo.com/v3/smtp/email',
+                    headers={'api-key': api_key, 'Content-Type': 'application/json'},
+                    json={
+                        'sender': {'email': 'mcarmonapalestina@gmail.com', 'name': 'SMYT Corralones'},
+                        'to': [{'email': email}],
+                        'subject': 'Recuperación de contraseña — MSYT',
+                        'textContent': f'Hola {user.nombre_user},\n\nEnlace para restablecer:\n\n{reset_url}\n\nExpira en 24 horas.'
+                    }
+                )
+            except Exception as e:
+                print(f"Error: {e}")
+
+        threading.Thread(target=enviar, daemon=True).start()
+
+       
 
         return Response({'message': 'Si el correo existe, recibirás un enlace.'}, status=200)
 

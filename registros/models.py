@@ -18,31 +18,44 @@ class CodigoPostal(models.Model):
         return f"{self.cp} - {self.municipio}, {self.estado}"
 
 
+
 def ruta_fotos_evidencia(instance, filename):
-    vehiculo_id = instance.ingreso.vehiculo.placas or instance.ingreso.vehiculo.num_serie or f"ID_{instance.ingreso.vehiculo.id}"
+    ext = os.path.splitext(filename)[1]
+    folio = instance.ingreso.folio
+    nombre = instance.nombre.replace(' ', '_').lower() if instance.nombre else 'foto'
+    vehiculo_id = instance.ingreso.vehiculo.placas or f"ID_{instance.ingreso.vehiculo.id}"
     fecha = instance.ingreso.fecha_ingreso.strftime('%Y-%m-%d')
-    return f'vehiculos/{vehiculo_id}/ingreso_{fecha}/fotos_evidencia/{filename}'
+    return f'vehiculos/{vehiculo_id}/ingreso_{fecha}/fotos_evidencia/{folio}_{nombre}{ext}'
 
 def ruta_fotos_danos(instance, filename):
-    vehiculo_id = instance.ingreso.vehiculo.placas or instance.ingreso.vehiculo.num_serie or f"ID_{instance.ingreso.vehiculo.id}"
+    ext = os.path.splitext(filename)[1]
+    folio = instance.ingreso.folio
+    parte = instance.parte_vehiculo.replace(' ', '_').lower() if instance.parte_vehiculo else 'dano'
+    vehiculo_id = instance.ingreso.vehiculo.placas or f"ID_{instance.ingreso.vehiculo.id}"
     fecha = instance.ingreso.fecha_ingreso.strftime('%Y-%m-%d')
-    return f'vehiculos/{vehiculo_id}/ingreso_{fecha}/fotos_danos/{filename}'
+    return f'vehiculos/{vehiculo_id}/ingreso_{fecha}/fotos_danos/{folio}_{parte}{ext}'
 
 def ruta_fotos_objetos(instance, filename):
-    vehiculo_id = instance.ingreso.vehiculo.placas or instance.ingreso.vehiculo.num_serie or f"ID_{instance.ingreso.vehiculo.id}"
+    ext = os.path.splitext(filename)[1]
+    folio = instance.ingreso.folio
+    desc = instance.descripcion.replace(' ', '_').lower()[:20] if instance.descripcion else 'objeto'
+    vehiculo_id = instance.ingreso.vehiculo.placas or f"ID_{instance.ingreso.vehiculo.id}"
     fecha = instance.ingreso.fecha_ingreso.strftime('%Y-%m-%d')
-    return f'vehiculos/{vehiculo_id}/ingreso_{fecha}/fotos_objetos/{filename}'
+    return f'vehiculos/{vehiculo_id}/ingreso_{fecha}/fotos_objetos/{folio}_{desc}{ext}'
 
 def ruta_documentos(instance, filename):
-    # Como los documentos pueden venir del Ingreso o del EstatusLegal, lo validamos:
+    ext = os.path.splitext(filename)[1]
     ingreso = getattr(instance, 'ingreso', None) or instance
-    vehiculo_id = ingreso.vehiculo.placas or ingreso.vehiculo.num_serie or f"ID_{ingreso.vehiculo.id}"
+    folio = ingreso.folio
+    vehiculo_id = ingreso.vehiculo.placas or f"ID_{ingreso.vehiculo.id}"
     fecha = ingreso.fecha_ingreso.strftime('%Y-%m-%d')
-    return f'vehiculos/{vehiculo_id}/ingreso_{fecha}/documentos/{filename}'
+    nombre_doc = os.path.splitext(filename)[0].replace(' ', '_').lower()[:30]
+    return f'vehiculos/{vehiculo_id}/ingreso_{fecha}/documentos/{folio}_{nombre_doc}{ext}'
 
 def ruta_solicitudes_temporales(instance, filename):
-    # Las fotos que sube el operador y están esperando aprobación se van a una carpeta temporal
-    return f'solicitudes_pendientes/{now().strftime("%Y-%m")}/{filename}'
+    ext = os.path.splitext(filename)[1]
+    folio = instance.ingreso.folio if hasattr(instance, 'ingreso') else 'sin_folio'
+    return f'solicitudes_pendientes/{now().strftime("%Y-%m")}/{folio}_{filename[:20]}{ext}'
 
 # --- MODELOS ---
 

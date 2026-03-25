@@ -1,4 +1,5 @@
 import json
+
 from django.utils import timezone
 from django.core.mail import send_mail
 from rest_framework import serializers
@@ -12,7 +13,9 @@ from .models import (
     RegistroDano, Inspeccion , FotoEvidencia
 )
 from .models import CodigoPostal
-
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+from decouple import config as decouple_config
 class IngresoListSerializer(serializers.ModelSerializer):
     # Traemos solo lo esencial del vehículo para la tabla
     vehiculo_detalle = serializers.SerializerMethodField()
@@ -125,26 +128,28 @@ class UsuarioSerializer(serializers.ModelSerializer):
             user.set_password(password)
         user.save()
 
-        # Enviar correo en background sin bloquear
         email = validated_data.get('email')
         username = validated_data.get('username')
 
         if email:
             def enviar():
                 try:
-                    send_mail(
-                        'Credenciales de acceso — MSYT',
-                        f'Bienvenido al sistema.\n\nUsuario: {username}\nContraseña: {password}',
-                        settings.DEFAULT_FROM_EMAIL,
-                        [email],
-                        fail_silently=True
+                    import requests as req
+                    api_key = decouple_config('BREVO_API_KEY')
+                    req.post(
+                        'https://api.brevo.com/v3/smtp/email',
+                        headers={'api-key': api_key, 'Content-Type': 'application/json'},
+                        json={
+                            'sender': {'email': 'mcarmonapalestina@gmail.com', 'name': 'SMYT Corralones'},
+                            'to': [{'email': email}],
+                            'subject': 'Credenciales de acceso — MSYT',
+                            'textContent': f'Bienvenido al sistema.\n\nUsuario: {username}\nContraseña: {password}'
+                        }
                     )
                 except Exception as e:
                     print(f"Error enviando correo: {e}")
 
             threading.Thread(target=enviar, daemon=True).start()
-
-        return user
         
 
     def update(self, instance, validated_data):
@@ -290,11 +295,12 @@ class SolicitudEdicionSerializer(serializers.ModelSerializer):
 
 
 class BitacoraSerializer(serializers.ModelSerializer):
-    user_nombre = serializers.CharField(source='usuario.username', read_only=True)
+    usuario = serializers.CharField(source='usuario.username', read_only=True)
+    rol = serializers.CharField(source='usuario.rol', read_only=True)
 
     class Meta:
         model = Bitacora
-        fields = ['id', 'tipo_evento', 'descripcion', 'user_nombre', 'fecha_evento']
+        fields = ['id', 'tipo_evento', 'descripcion', 'usuario', 'rol', 'fecha_evento']
 
 
 # --- INGRESO (FUSIONADO PRO) ---
