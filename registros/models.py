@@ -6,6 +6,7 @@ import os
 import uuid
 from django.utils.timezone import now
 from rest_framework.exceptions import ValidationError
+from cloudinary.models import CloudinaryField
 
 # --- FUNCIONES DE RUTA PARA ARCHIVOS ---
 class CodigoPostal(models.Model):
@@ -207,7 +208,8 @@ class EstatusLegal(models.Model):
     
     condicion_juridica = models.CharField(max_length=200)
     num_oficio = models.CharField(max_length=100)
-    documento_oficio = models.FileField(upload_to=ruta_documentos)
+    # ✅ Correcto
+    documento_oficio = CloudinaryField('documento', resource_type='raw')
     fecha_oficio = models.DateField()
     observaciones = models.TextField(null=True, blank=True)
     fecha_registro = models.DateTimeField(auto_now_add=True) 

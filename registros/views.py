@@ -49,6 +49,22 @@ from rest_framework.decorators import api_view
 import json
 import ast
 
+# views.py
+from django.http import FileResponse
+import os
+
+# ✅ Correcto
+from django.http import Http404, FileResponse
+import os
+
+def servir_pdf(request, ruta):
+    path = os.path.join(settings.MEDIA_ROOT, ruta)
+    if not os.path.exists(path):
+        raise Http404
+    response = FileResponse(open(path, 'rb'), content_type='application/pdf')
+    response['Content-Disposition'] = 'inline; filename="documento.pdf"'
+    return response
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def buscar_cp(request, cp):

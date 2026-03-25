@@ -13,9 +13,9 @@ from registros.views import (
     DepositoViewSet, UsuarioViewSet, VehiculoViewSet, 
     IngresoViewSet, PropietarioViewSet, DetallesAutoViewSet,
     ObjetoPersonalViewSet, RegistroDanoViewSet, InspeccionViewSet,
-    SolicitudEdicionViewSet, BitacoraViewSet        
+    SolicitudEdicionViewSet, BitacoraViewSet       
 )
-from registros.views import buscar_cp
+from registros.views import buscar_cp , servir_pdf 
 
 
 # Importamos directamente todo desde views
@@ -64,6 +64,8 @@ urlpatterns = [
     path('api/fotos/<int:foto_id>/revisar/', views.revisar_foto),
 
     path('api/cp/<str:cp>/', buscar_cp, name='buscar_cp'),
+    # urls.py
+    path('media/pdf/<path:ruta>', servir_pdf, name='servir_pdf'),
     
 
 ]
