@@ -162,7 +162,7 @@ PASSWORD_RESET_TIMEOUT = 86400
 
 # ─── INTERNACIONALIZACIÓN ─────────────────────────────────────
 LANGUAGE_CODE = 'es-mx'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Mexico_City'
 USE_I18N = True
 USE_TZ = True
 DEFAULT_CHARSET = 'utf-8'
