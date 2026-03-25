@@ -134,24 +134,22 @@ class UsuarioSerializer(serializers.ModelSerializer):
         if email:
             def enviar():
                 try:
-                    configuration = sib_api_v3_sdk.Configuration()
-                    configuration.api_key['api-key'] = decouple_config('BREVO_API_KEY')
-                    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
-                        sib_api_v3_sdk.ApiClient(configuration)
+                    import requests as req
+                    api_key = decouple_config('BREVO_API_KEY')
+                    req.post(
+                        'https://api.brevo.com/v3/smtp/email',
+                        headers={'api-key': api_key, 'Content-Type': 'application/json'},
+                        json={
+                            'sender': {'email': 'mcarmonapalestina@gmail.com', 'name': 'SMYT Corralones'},
+                            'to': [{'email': email}],
+                            'subject': 'Credenciales de acceso — MSYT',
+                            'textContent': f'Bienvenido al sistema.\n\nUsuario: {username}\nContraseña: {password}'
+                        }
                     )
-                    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
-                        to=[{"email": email}],
-                        sender={"email": "mcarmonapalestina@gmail.com", "name": "SMYT Corralones"},
-                        subject='Credenciales de acceso — MSYT',
-                        text_content=f'Bienvenido al sistema.\n\nUsuario: {username}\nContraseña: {password}'
-                    )
-                    api_instance.send_transac_email(send_smtp_email)
                 except Exception as e:
                     print(f"Error enviando correo: {e}")
 
             threading.Thread(target=enviar, daemon=True).start()
-
-        return user
         
 
     def update(self, instance, validated_data):

@@ -91,26 +91,24 @@ class PasswordResetRequestView(APIView):
 
         def enviar():
             try:
-                configuration = sib_api_v3_sdk.Configuration()
-                configuration.api_key['api-key'] = decouple_config('BREVO_API_KEY')
-                print(f"Intentando enviar correo a: {email}")
-                print(f"API KEY: {decouple_config('BREVO_API_KEY')[:20]}...")  # solo primeros 20 chars
-                configuration = sib_api_v3_sdk.Configuration()
-                api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
-                    sib_api_v3_sdk.ApiClient(configuration)
+                import requests as req
+                api_key = decouple_config('BREVO_API_KEY')
+                req.post(
+                    'https://api.brevo.com/v3/smtp/email',
+                    headers={'api-key': api_key, 'Content-Type': 'application/json'},
+                    json={
+                        'sender': {'email': 'mcarmonapalestina@gmail.com', 'name': 'SMYT Corralones'},
+                        'to': [{'email': email}],
+                        'subject': 'Recuperación de contraseña — MSYT',
+                        'textContent': f'Hola {user.nombre_user},\n\nEnlace para restablecer:\n\n{reset_url}\n\nExpira en 24 horas.'
+                    }
                 )
-                
-                send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
-                    to=[{"email": email}],
-                    sender={"email": "mcarmonapalestina@gmail.com", "name": "SMYT Corralones"},
-                    subject='Recuperación de contraseña — MSYT',
-                    text_content=f'Hola {user.nombre_user},\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expira en 24 horas.\n\nSi no solicitaste esto, ignora este correo.'
-                )
-                api_instance.send_transac_email(send_smtp_email)
             except Exception as e:
-                print(f"Error enviando correo: {e}")
+                print(f"Error: {e}")
 
         threading.Thread(target=enviar, daemon=True).start()
+
+       
 
         return Response({'message': 'Si el correo existe, recibirás un enlace.'}, status=200)
 
