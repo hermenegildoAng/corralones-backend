@@ -10,7 +10,7 @@ from django.apps import apps
 
 from django.utils.timezone import now
 from .models import CodigoPostal
-
+import threading
 
 from django.utils.timezone import now
 import json
@@ -79,29 +79,28 @@ class PasswordResetRequestView(APIView):
     def post(self, request):
         email = request.data.get('email', '').strip()
 
-        # Siempre responde 200 aunque el email no exista (seguridad)
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response({'message': 'Si el correo existe, recibirás un enlace.'}, status=200)
 
-        # Genera token y uid
-        uid   = urlsafe_base64_encode(force_bytes(user.pk))
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
-
-        # Construye el link al frontend
         reset_url = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}"
-        print("UID:", uid)
-        print("TOKEN:", token)
-        
 
-        # Envía el correo
-        send_mail(
-            subject = 'Recuperación de contraseña — MSYT',
-            message = f'Hola {user.nombre_user},\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expira en 24 horas.\n\nSi no solicitaste esto, ignora este correo.',
-            from_email = settings.DEFAULT_FROM_EMAIL,
-            recipient_list = [email],
-        )
+        def enviar():
+            try:
+                send_mail(
+                    subject='Recuperación de contraseña — MSYT',
+                    message=f'Hola {user.nombre_user},\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n\n{reset_url}\n\nEste enlace expira en 24 horas.\n\nSi no solicitaste esto, ignora este correo.',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=True
+                )
+            except Exception as e:
+                print(f"Error enviando correo reset: {e}")
+
+        threading.Thread(target=enviar, daemon=True).start()
 
         return Response({'message': 'Si el correo existe, recibirás un enlace.'}, status=200)
 
